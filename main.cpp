@@ -2,7 +2,7 @@
 #include <SFML/Network.hpp>
 #include <SFML/Graphics.hpp>
 
-int number_of_players = 2;
+int number_of_players = 3;
 
 void send_coordinates_to_all(std::vector<sf::UdpSocket> &sending_sockets, std::vector<int> &players_ports,
                              std::vector<float> &players_data) {
@@ -24,7 +24,8 @@ void send_coordinates_to_all(std::vector<sf::UdpSocket> &sending_sockets, std::v
 }
 
 void
-send_player_event_to_all(std::vector<sf::UdpSocket> &sending_sockets, std::vector<int> &players_ports, int player_index,
+send_player_event_to_all(std::vector<sf::UdpSocket> &sending_sockets,
+                         std::vector<int> &players_ports, int player_index,
                          sf::Event event) {
     sf::IpAddress recipient = sf::IpAddress::LocalHost; // In future we need a list of address
     sf::Packet packet;
@@ -35,7 +36,7 @@ send_player_event_to_all(std::vector<sf::UdpSocket> &sending_sockets, std::vecto
     packet << event.key.code;
 
     for (int i = 0; i < number_of_players; ++i) {
-        if (i == player_index)continue;
+        if (i+1 == player_index)continue;
         sending_sockets[i].send(packet, recipient, players_ports[i]);
     }
 }
@@ -48,7 +49,7 @@ int main() {
     for (int i = 0; i < number_of_players; ++i) {
         sending_sockets[i].setBlocking(false);
     }
-    std::vector<int> players_ports{54000, 54001};
+    std::vector<int> players_ports{54000, 53999,53998};
     int server_port = 54002;
     receive_socket.bind(server_port);
 
@@ -57,9 +58,9 @@ int main() {
     unsigned short port;
 
     std::vector<float> players_data(number_of_players * 4);// four numbers for each player
-
+    int just_received = 0;
     while (true) {
-        int just_received = 0;
+
         int c = -2;
         int key_code = -1;
         int player_index = -1;
