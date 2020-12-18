@@ -3,10 +3,10 @@
 #include <SFML/Graphics.hpp>
 
 int number_of_players = 3;
-
+sf::IpAddress recipient = "10.55.133.235"; // In future we need a list of address
 void send_coordinates_to_all(std::vector<sf::UdpSocket> &sending_sockets, std::vector<int> &players_ports,
                              std::vector<float> &players_data) {
-    sf::IpAddress recipient = sf::IpAddress::LocalHost; // In future we need a list of address
+
     std::vector<sf::Packet> packets(number_of_players); // Each player should receive updates on other players
     int c = -1;
     for (int i = 0; i < number_of_players; ++i) {
@@ -24,9 +24,9 @@ void send_coordinates_to_all(std::vector<sf::UdpSocket> &sending_sockets, std::v
 }
 
 void send_player_event_to_all(std::vector<sf::UdpSocket> &sending_sockets,
-                              std::vector<int> &players_ports, int player_index,
+                              std::vector<int> &players_ports,std::map <int, sf::IpAddress>& IpAddresses, int player_index,
                               int type, int key_code, float x, float y, float vx, float vy) {
-    sf::IpAddress recipient = sf::IpAddress::LocalHost; // In future we need a list of address
+    //sf::IpAddress recipient = sf::IpAddress::LocalHost; // In future we need a list of address
     sf::Packet packet;
     int c = -2; // The code of event package type
     packet << c;
@@ -40,7 +40,7 @@ void send_player_event_to_all(std::vector<sf::UdpSocket> &sending_sockets,
     packet << vy;
     for (int i = 0; i < number_of_players; ++i) {
         if (i + 1 == player_index)continue;
-        sending_sockets[i].send(packet, recipient, players_ports[i]);
+        sending_sockets[i].send(packet, IpAddresses[i + 1], players_ports[i]);
     }
 }
 
@@ -52,6 +52,8 @@ int main() {
     for (int i = 0; i < number_of_players; ++i) {
         sending_sockets[i].setBlocking(false);
     }
+    std::map <int, sf::IpAddress> IpAddresses;
+
     std::vector<int> players_ports{54000, 53999, 53998};
     int server_port = 54002;
     receive_socket.bind(server_port);
@@ -71,6 +73,7 @@ int main() {
         if (receive_socket.receive(packet, sender, port) == sf::Socket::Done) {
             packet >> player_index;
             packet >> c;
+            IpAddresses[player_index] = sender;
 
 
             float x1 = 0;
@@ -79,14 +82,13 @@ int main() {
             float vy = 0;
 
             if (c == sf::Event::EventType::KeyPressed || c == sf::Event::EventType::KeyReleased) {
-
                 packet >> key_code;
                 packet >> x1;
                 packet >> y1;
                 packet >> vx;
                 packet >> vy;
 
-                send_player_event_to_all(sending_sockets, players_ports, player_index, c, key_code, x1,y1,vx,vy);
+                send_player_event_to_all(sending_sockets, players_ports,IpAddresses, player_index, c, key_code, x1,y1,vx,vy);
 
             } else if (c == -1) {
                 if (!was_updated[player_index - 1]){
